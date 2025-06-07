@@ -2,15 +2,17 @@ const tabsEl = document.getElementById('tabs');
 const iframesEl = document.getElementById('iframes');
 const addTabBtn = document.getElementById('addTabBtn');
 const toggleModeBtn = document.getElementById('toggleModeBtn');
+const addressBar = document.getElementById('addressBar');
+const goBtn = document.getElementById('goBtn');
 const GOOGLE_URL = "https://www.google.com/search?igu=1";
 
 let tabs = [];
 let currentTab = null;
 let tabIdCounter = 1;
 
-function createTab() {
+function createTab(url = GOOGLE_URL) {
   const tabId = tabIdCounter++;
-  tabs.push({id: tabId, url: GOOGLE_URL});
+  tabs.push({id: tabId, url: url});
   renderTabs();
   switchToTab(tabId);
 }
@@ -35,6 +37,7 @@ function switchToTab(tabId) {
   currentTab = tabId;
   renderTabs();
   renderIframes();
+  updateAddressBar();
 }
 
 function renderTabs() {
@@ -71,6 +74,39 @@ function renderIframes() {
   });
 }
 
+function updateAddressBar() {
+  const tab = tabs.find(t => t.id === currentTab);
+  if (tab) {
+    addressBar.value = tab.url;
+  } else {
+    addressBar.value = "";
+  }
+}
+
+function navigateToAddress() {
+  let url = addressBar.value.trim();
+  if (!url) return;
+  // Add protocol if missing
+  if (!/^https?:\/\//i.test(url)) {
+    url = "https://" + url;
+  }
+  // Update URL in tabs
+  const tab = tabs.find(t => t.id === currentTab);
+  if (tab) {
+    tab.url = url;
+    renderIframes();
+    updateAddressBar();
+  }
+}
+
+addressBar.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    navigateToAddress();
+  }
+});
+
+goBtn.addEventListener('click', navigateToAddress);
+
 // Mode toggle
 toggleModeBtn.onclick = function() {
   document.body.classList.toggle('dark');
@@ -79,7 +115,7 @@ toggleModeBtn.onclick = function() {
 };
 
 // Add new tab
-addTabBtn.onclick = createTab;
+addTabBtn.onclick = () => createTab();
 
 // Init
 createTab();
