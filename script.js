@@ -2,7 +2,7 @@ const tabsEl = document.getElementById('tabs');
 const iframesEl = document.getElementById('iframes');
 const addTabBtn = document.getElementById('addTabBtn');
 const toggleModeBtn = document.getElementById('toggleModeBtn');
-const GOOGLE_URL = "https://www.google.com/";
+const GOOGLE_URL = "https://www.google.com/search?igu=1";
 
 let tabs = [];
 let currentTab = null;
