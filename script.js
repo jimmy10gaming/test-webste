@@ -13,15 +13,51 @@ let tabs = [];
 let currentTab = null;
 let tabIdCounter = 1;
 
-// Each tab: {id, url, history:[], historyIndex:int}
+// Each tab: {id, url, history:[], historyIndex:int, iframe:element}
 function createTab(url = GOOGLE_URL) {
   const tabId = tabIdCounter++;
+  // Create iframe for this tab (persist while tab is open)
+  const iframe = document.createElement('iframe');
+  iframe.src = url;
+  iframe.setAttribute('data-tabid', tabId);
+  iframe.className = 'browser-iframe';
+
+  // Track history for this tab
   tabs.push({
     id: tabId,
     url: url,
     history: [url],
-    historyIndex: 0
+    historyIndex: 0,
+    iframe: iframe
   });
+
+  // Listen for iframe navigation (will only work for same-origin)
+  iframe.addEventListener('load', function() {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
+    try {
+      // Try to get the actual iframe location for same-origin
+      let realUrl = iframe.contentWindow.location.href;
+      if (realUrl && realUrl !== tab.url) {
+        // Only push if it's a new URL
+        tab.history = tab.history.slice(0, tab.historyIndex + 1);
+        tab.history.push(realUrl);
+        tab.historyIndex = tab.history.length - 1;
+        tab.url = realUrl;
+      }
+      // Update address bar only if active
+      if (tabId === currentTab) {
+        addressBar.value = realUrl;
+      }
+    } catch (e) {
+      // Cross-origin, fallback to last known URL
+      if (tabId === currentTab) {
+        addressBar.value = tab.url;
+      }
+    }
+    if (tabId === currentTab) updateNavButtons();
+  });
+
   renderTabs();
   switchToTab(tabId);
 }
@@ -29,6 +65,11 @@ function createTab(url = GOOGLE_URL) {
 function closeTab(tabId) {
   const idx = tabs.findIndex(tab => tab.id === tabId);
   if (idx !== -1) {
+    // Remove iframe from DOM if present
+    const tab = tabs[idx];
+    if (tab.iframe && tab.iframe.parentNode) {
+      tab.iframe.parentNode.removeChild(tab.iframe);
+    }
     tabs.splice(idx, 1);
     if (tabs.length === 0) {
       createTab();
@@ -73,14 +114,12 @@ function renderTabs() {
 }
 
 function renderIframes() {
+  // Only attach iframes that aren't already in DOM and show/hide according to active tab
   iframesEl.innerHTML = '';
   tabs.forEach(tab => {
     const wrapper = document.createElement('div');
     wrapper.className = 'iframe-container' + (tab.id === currentTab ? ' active' : '');
-    const iframe = document.createElement('iframe');
-    iframe.src = tab.url;
-    iframe.setAttribute('data-tabid', tab.id);
-    wrapper.appendChild(iframe);
+    wrapper.appendChild(tab.iframe);
     iframesEl.appendChild(wrapper);
   });
 }
@@ -94,6 +133,7 @@ function updateAddressBar() {
   }
 }
 
+// Enable/disable back/forward buttons per tab
 function updateNavButtons() {
   const tab = tabs.find(t => t.id === currentTab);
   if (tab) {
@@ -121,7 +161,7 @@ function navigateToAddress(newUrl = null) {
       tab.history.push(url);
       tab.historyIndex = tab.history.length - 1;
       tab.url = url;
-      renderIframes();
+      tab.iframe.src = url; // Actually navigate iframe
       updateAddressBar();
       updateNavButtons();
     }
@@ -142,7 +182,7 @@ backBtn.addEventListener('click', function() {
   if (tab && tab.historyIndex > 0) {
     tab.historyIndex--;
     tab.url = tab.history[tab.historyIndex];
-    renderIframes();
+    tab.iframe.src = tab.url;
     updateAddressBar();
     updateNavButtons();
   }
@@ -152,16 +192,15 @@ forwardBtn.addEventListener('click', function() {
   if (tab && tab.historyIndex < tab.history.length - 1) {
     tab.historyIndex++;
     tab.url = tab.history[tab.historyIndex];
-    renderIframes();
+    tab.iframe.src = tab.url;
     updateAddressBar();
     updateNavButtons();
   }
 });
 reloadBtn.addEventListener('click', function() {
-  // Reload the current iframe
   const tab = tabs.find(t => t.id === currentTab);
   if (tab) {
-    renderIframes();
+    tab.iframe.src = tab.url;
     updateAddressBar();
     updateNavButtons();
   }
