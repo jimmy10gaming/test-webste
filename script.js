@@ -7,27 +7,22 @@ const goBtn = document.getElementById('goBtn');
 const backBtn = document.getElementById('backBtn');
 const forwardBtn = document.getElementById('forwardBtn');
 const reloadBtn = document.getElementById('reloadBtn');
-const bookmarkStar = document.getElementById('bookmarkStar');
-const bookmarksBar = document.getElementById('bookmarksBar');
-
-const GOOGLE_URL = "https://www.google.com/search?igu=1";
+const GOOGLE_URL = "https://www.google.com/";
 
 let tabs = [];
 let currentTab = null;
 let tabIdCounter = 1;
-let bookmarks = JSON.parse(localStorage.getItem("browser_bookmarks") || "[]");
 
-function saveBookmarks() {
-  localStorage.setItem("browser_bookmarks", JSON.stringify(bookmarks));
-}
-
+// Each tab: {id, url, history:[], historyIndex:int, iframe:element}
 function createTab(url = GOOGLE_URL) {
   const tabId = tabIdCounter++;
+  // Create iframe for this tab (persist while tab is open)
   const iframe = document.createElement('iframe');
   iframe.src = url;
   iframe.setAttribute('data-tabid', tabId);
   iframe.className = 'browser-iframe';
 
+  // Track history for this tab
   tabs.push({
     id: tabId,
     url: url,
@@ -36,25 +31,28 @@ function createTab(url = GOOGLE_URL) {
     iframe: iframe
   });
 
+  // Listen for iframe navigation (will only work for same-origin)
   iframe.addEventListener('load', function() {
     const tab = tabs.find(t => t.id === tabId);
     if (!tab) return;
     try {
+      // Try to get the actual iframe location for same-origin
       let realUrl = iframe.contentWindow.location.href;
       if (realUrl && realUrl !== tab.url) {
+        // Only push if it's a new URL
         tab.history = tab.history.slice(0, tab.historyIndex + 1);
         tab.history.push(realUrl);
         tab.historyIndex = tab.history.length - 1;
         tab.url = realUrl;
       }
+      // Update address bar only if active
       if (tabId === currentTab) {
         addressBar.value = realUrl;
-        updateBookmarkStar();
       }
     } catch (e) {
+      // Cross-origin, fallback to last known URL
       if (tabId === currentTab) {
         addressBar.value = tab.url;
-        updateBookmarkStar();
       }
     }
     if (tabId === currentTab) updateNavButtons();
@@ -67,6 +65,7 @@ function createTab(url = GOOGLE_URL) {
 function closeTab(tabId) {
   const idx = tabs.findIndex(tab => tab.id === tabId);
   if (idx !== -1) {
+    // Remove iframe from DOM if present
     const tab = tabs[idx];
     if (tab.iframe && tab.iframe.parentNode) {
       tab.iframe.parentNode.removeChild(tab.iframe);
@@ -90,7 +89,6 @@ function switchToTab(tabId) {
   renderIframes();
   updateAddressBar();
   updateNavButtons();
-  updateBookmarkStar();
 }
 
 function renderTabs() {
@@ -98,9 +96,10 @@ function renderTabs() {
   tabs.forEach(tab => {
     const tabDiv = document.createElement('div');
     tabDiv.className = 'tab' + (tab.id === currentTab ? ' active' : '');
-    tabDiv.textContent = "New Tab";
+    tabDiv.textContent = "Google";
     tabDiv.onclick = () => switchToTab(tab.id);
 
+    // Close button
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-btn';
     closeBtn.innerHTML = '&times;';
@@ -115,6 +114,7 @@ function renderTabs() {
 }
 
 function renderIframes() {
+  // Only attach iframes that aren't already in DOM and show/hide according to active tab
   iframesEl.innerHTML = '';
   tabs.forEach(tab => {
     const wrapper = document.createElement('div');
@@ -128,13 +128,12 @@ function updateAddressBar() {
   const tab = tabs.find(t => t.id === currentTab);
   if (tab) {
     addressBar.value = tab.url;
-    updateBookmarkStar();
   } else {
     addressBar.value = "";
-    updateBookmarkStar();
   }
 }
 
+// Enable/disable back/forward buttons per tab
 function updateNavButtons() {
   const tab = tabs.find(t => t.id === currentTab);
   if (tab) {
@@ -146,82 +145,25 @@ function updateNavButtons() {
   }
 }
 
-function updateBookmarkStar() {
-  const tab = tabs.find(t => t.id === currentTab);
-  if (tab && isBookmarked(tab.url)) {
-    bookmarkStar.textContent = "★";
-    bookmarkStar.classList.add("active");
-  } else {
-    bookmarkStar.textContent = "☆";
-    bookmarkStar.classList.remove("active");
-  }
-}
-
-function isBookmarked(url) {
-  return bookmarks.some(bm => bm.url === url);
-}
-
-function addOrRemoveBookmark() {
-  const tab = tabs.find(t => t.id === currentTab);
-  if (!tab) return;
-  const url = tab.url;
-  const idx = bookmarks.findIndex(bm => bm.url === url);
-  if (idx === -1) {
-    // Add
-    bookmarks.push({
-      url: url,
-      title: (url.match(/^https?:\/\/([^\/]+)/i) || [])[1] || url
-    });
-  } else {
-    // Remove
-    bookmarks.splice(idx, 1);
-  }
-  saveBookmarks();
-  renderBookmarksBar();
-  updateBookmarkStar();
-}
-
-function renderBookmarksBar() {
-  bookmarksBar.innerHTML = '';
-  bookmarks.forEach((bm, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'bookmark-btn';
-    btn.title = bm.url;
-    btn.textContent = bm.title || bm.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    btn.onclick = () => navigateToAddress(bm.url);
-    // Remove bookmark button (X)
-    const rm = document.createElement('span');
-    rm.className = 'bookmark-remove';
-    rm.textContent = '×';
-    rm.onclick = (e) => {
-      e.stopPropagation();
-      bookmarks.splice(i, 1);
-      saveBookmarks();
-      renderBookmarksBar();
-      updateBookmarkStar();
-    };
-    btn.appendChild(rm);
-    bookmarksBar.appendChild(btn);
-  });
-}
-
 function navigateToAddress(newUrl = null) {
   let url = newUrl !== null ? newUrl : addressBar.value.trim();
   if (!url) return;
+  // Add protocol if missing
   if (!/^https?:\/\//i.test(url)) {
     url = "https://" + url;
   }
   const tab = tabs.find(t => t.id === currentTab);
   if (tab) {
+    // Only push if not the same as current
     if (tab.url !== url) {
+      // Truncate forward history
       tab.history = tab.history.slice(0, tab.historyIndex + 1);
       tab.history.push(url);
       tab.historyIndex = tab.history.length - 1;
       tab.url = url;
-      tab.iframe.src = url;
+      tab.iframe.src = url; // Actually navigate iframe
       updateAddressBar();
       updateNavButtons();
-      updateBookmarkStar();
     }
   }
 }
@@ -231,8 +173,10 @@ addressBar.addEventListener('keydown', function(e) {
     navigateToAddress();
   }
 });
+
 goBtn.addEventListener('click', () => navigateToAddress());
 
+// Navigation buttons
 backBtn.addEventListener('click', function() {
   const tab = tabs.find(t => t.id === currentTab);
   if (tab && tab.historyIndex > 0) {
@@ -241,7 +185,6 @@ backBtn.addEventListener('click', function() {
     tab.iframe.src = tab.url;
     updateAddressBar();
     updateNavButtons();
-    updateBookmarkStar();
   }
 });
 forwardBtn.addEventListener('click', function() {
@@ -252,7 +195,6 @@ forwardBtn.addEventListener('click', function() {
     tab.iframe.src = tab.url;
     updateAddressBar();
     updateNavButtons();
-    updateBookmarkStar();
   }
 });
 reloadBtn.addEventListener('click', function() {
@@ -261,20 +203,18 @@ reloadBtn.addEventListener('click', function() {
     tab.iframe.src = tab.url;
     updateAddressBar();
     updateNavButtons();
-    updateBookmarkStar();
   }
 });
 
+// Mode toggle
 toggleModeBtn.onclick = function() {
   document.body.classList.toggle('dark');
   document.body.classList.toggle('light');
   toggleModeBtn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
 };
 
+// Add new tab
 addTabBtn.onclick = () => createTab();
 
-bookmarkStar.onclick = addOrRemoveBookmark;
-
-// Initial setup
+// Init
 createTab();
-renderBookmarksBar();
