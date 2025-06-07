@@ -1,0 +1,128 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #fff;
+  color: #222;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.dark {
+  background: #18181b;
+  color: #eee;
+}
+
+.browser-header {
+  display: flex;
+  align-items: center;
+  padding: 0.5em;
+  background: #ececec;
+  border-bottom: 1px solid #bbb;
+}
+
+body.dark .browser-header {
+  background: #23232a;
+  border-bottom: 1px solid #333;
+}
+
+.tabs {
+  display: flex;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 0.4em 1.2em;
+  margin-right: 0.5em;
+  background: #fafafa;
+  border: 1px solid #bbb;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  position: relative;
+  transition: background 0.2s;
+}
+
+body.dark .tab {
+  background: #282832;
+  border: 1px solid #333;
+}
+
+.tab.active {
+  font-weight: bold;
+  background: #fff;
+  border-bottom: 1px solid #fff;
+  z-index: 2;
+}
+
+body.dark .tab.active {
+  background: #23232a;
+  border-bottom: 1px solid #23232a;
+}
+
+.tab .close-btn {
+  margin-left: 0.5em;
+  cursor: pointer;
+  color: #888;
+  font-weight: bold;
+  background: none;
+  border: none;
+  font-size: 1.1em;
+}
+
+.tab .close-btn:hover {
+  color: #f44;
+}
+
+#addTabBtn, #toggleModeBtn {
+  font-size: 1.2em;
+  background: #e0e0e0;
+  border: none;
+  border-radius: 50%;
+  margin-left: 0.5em;
+  cursor: pointer;
+  width: 2em;
+  height: 2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+body.dark #addTabBtn, body.dark #toggleModeBtn {
+  background: #34343a;
+}
+
+#addTabBtn:hover, #toggleModeBtn:hover {
+  background: #bbb;
+}
+
+body.dark #addTabBtn:hover, body.dark #toggleModeBtn:hover {
+  background: #44444a;
+}
+
+#iframes {
+  width: 100vw;
+  height: calc(100vh - 54px);
+  position: relative;
+  overflow: hidden;
+}
+
+.iframe-container {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+
+.iframe-container.active {
+  display: block;
+}
+
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
